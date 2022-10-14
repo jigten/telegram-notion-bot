@@ -1,12 +1,105 @@
 package main
 
 import (
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"log"
 	"net/http"
+	"net/url"
+	"os"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/joho/godotenv"
 )
 
-var db = make(map[string]string)
+const startCommand string = "/start"
+
+var lenStartCommand int = len(startCommand)
+
+const telegramApiBaseUrl string = "https://api.telegram.org/bot"
+const telegramApiSendMessage string = "/sendMessage"
+const telegramTokenEnv string = "TELEGRAM_BOT_TOKEN"
+
+var telegramApi string = telegramApiBaseUrl + os.Getenv(telegramTokenEnv) + telegramApiSendMessage
+
+// A Telegram Chat indicates the conversation to which the message belongs.
+type Chat struct {
+	Id int `json:"id"`
+}
+
+// Message is a Telegram object that can be found in an update.
+type Message struct {
+	Text string `json:"text"`
+	Chat Chat   `json:"chat"`
+}
+
+// Update is a Telegram object that the handler receives every time an user interacts with the bot.
+type Update struct {
+	UpdateId int     `json:"update_id"`
+	Message  Message `json:"message"`
+}
+
+func parseTelegramRequest(c *gin.Context) (*Update, error) {
+	var update Update
+	if err := c.BindJSON(&update); err != nil {
+		return nil, err
+	}
+
+	if update.UpdateId == 0 {
+		log.Printf("Invalid update id, got update id = 0")
+		return nil, errors.New("Invalid update id of 0 indicates failure to parse incoming update")
+	}
+
+	return &update, nil
+}
+
+func sendTextToTelegramChat(chatId int, text string) (string, error) {
+	log.Printf("Sending %s to chat_id: %d", text, chatId)
+	fmt.Printf("BOT TOKEN FROM OS IS %s", os.Getenv("TELEGRAM_BOT_TOKEN"))
+	var telegramApi string = "https://api.telegram.org/bot" + os.Getenv("TELEGRAM_BOT_TOKEN") + "/sendMessage"
+	response, err := http.PostForm(
+		telegramApi,
+		url.Values{
+			"chat_id": {strconv.Itoa(chatId)},
+			"text":    {text},
+		})
+
+	if err != nil {
+		log.Printf("error when posting text to the chat: %s", err.Error())
+		return "", err
+	}
+	defer response.Body.Close()
+
+	var bodyBytes, errRead = ioutil.ReadAll(response.Body)
+	if errRead != nil {
+		log.Printf("error in parsing telegram answer %s", errRead.Error())
+		return "", err
+	}
+	bodyString := string(bodyBytes)
+	log.Printf("Body of Telegram Response: %s", bodyString)
+
+	return bodyString, nil
+}
+
+func handler(c *gin.Context) {
+	var update, err = parseTelegramRequest(c)
+	if err != nil {
+		log.Printf("error parsing update, %s", err.Error())
+		return
+	}
+
+	fmt.Printf("recieved update with contents: %+v\n", update)
+
+	// Send response back to Telegram
+	var telegramResponseBody, errTelegram = sendTextToTelegramChat(update.Message.Chat.Id, "Hi")
+	if errTelegram != nil {
+		log.Printf("got error %s from telegram, response body is %s", errTelegram.Error(), telegramResponseBody)
+	} else {
+		log.Printf("successfully distributed to chat id %d", update.Message.Chat.Id)
+	}
+}
 
 func setupRouter() *gin.Engine {
 	// Disable Console Color
@@ -18,53 +111,18 @@ func setupRouter() *gin.Engine {
 		c.String(http.StatusOK, "pong")
 	})
 
-	// Get user value
-	r.GET("/user/:name", func(c *gin.Context) {
-		user := c.Params.ByName("name")
-		value, ok := db[user]
-		if ok {
-			c.JSON(http.StatusOK, gin.H{"user": user, "value": value})
-		} else {
-			c.JSON(http.StatusOK, gin.H{"user": user, "status": "no value"})
-		}
-	})
-
-	// Authorized group (uses gin.BasicAuth() middleware)
-	// Same than:
-	// authorized := r.Group("/")
-	// authorized.Use(gin.BasicAuth(gin.Credentials{
-	//	  "foo":  "bar",
-	//	  "manu": "123",
-	//}))
-	authorized := r.Group("/", gin.BasicAuth(gin.Accounts{
-		"foo":  "bar", // user:foo password:bar
-		"manu": "123", // user:manu password:123
-	}))
-
-	/* example curl for /admin with basicauth header
-	   Zm9vOmJhcg== is base64("foo:bar")
-
-		curl -X POST \
-	  	http://localhost:8080/admin \
-	  	-H 'authorization: Basic Zm9vOmJhcg==' \
-	  	-H 'content-type: application/json' \
-	  	-d '{"value":"bar"}'
-	*/
-	authorized.POST("admin", func(c *gin.Context) {
-		user := c.MustGet(gin.AuthUserKey).(string)
-
-		// Parse JSON
-		var json struct {
-			Value string `json:"value" binding:"required"`
-		}
-
-		if c.Bind(&json) == nil {
-			db[user] = json.Value
-			c.JSON(http.StatusOK, gin.H{"status": "ok"})
-		}
-	})
+	r.POST("/handler", handler)
 
 	return r
+}
+
+func init() {
+
+	err := godotenv.Load(".env")
+
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
 }
 
 func main() {
