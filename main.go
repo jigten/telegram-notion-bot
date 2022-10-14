@@ -14,6 +14,11 @@ import (
 	"github.com/joho/godotenv"
 )
 
+var allowedChatIds = map[int]bool{
+	-898876211: true,
+	1251311320: true,
+}
+
 const startCommand string = "/start"
 
 var lenStartCommand int = len(startCommand)
@@ -92,8 +97,13 @@ func handler(c *gin.Context) {
 
 	fmt.Printf("recieved update with contents: %+v\n", update)
 
+	// reject message if not from allowed chats
+	if _, ok := allowedChatIds[update.Message.Chat.Id]; !ok {
+		sendTextToTelegramChat(update.Message.Chat.Id, "Unauthorized Chat ID")
+	}
+
 	// Send response back to Telegram
-	var telegramResponseBody, errTelegram = sendTextToTelegramChat(update.Message.Chat.Id, "Hi")
+	var telegramResponseBody, errTelegram = sendTextToTelegramChat(update.Message.Chat.Id, "Hi Tshogyal & Jigten!")
 	if errTelegram != nil {
 		log.Printf("got error %s from telegram, response body is %s", errTelegram.Error(), telegramResponseBody)
 	} else {
