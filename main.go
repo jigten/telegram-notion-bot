@@ -6,7 +6,8 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	telegram_services "github.com/jigten/telegram-notion-bot/services"
+	command_handler_service "github.com/jigten/telegram-notion-bot/services/command_handler_service"
+	telegram_services "github.com/jigten/telegram-notion-bot/services/telegram_service"
 	"github.com/joho/godotenv"
 )
 
@@ -29,8 +30,18 @@ func handler(c *gin.Context) {
 		telegram_services.SendTextToTelegramChat(update.Message.Chat.Id, "Unauthorized Chat ID")
 	}
 
+	command, _, parseErr := telegram_services.ParseEventCommand(update.Message.Text)
+	if parseErr != nil {
+		telegram_services.SendTextToTelegramChat(update.Message.Chat.Id, parseErr.Error())
+	}
+
+	returnMsg, msgErr := command_handler_service.HandleCommand(command)
+	if msgErr != nil {
+		telegram_services.SendTextToTelegramChat(update.Message.Chat.Id, msgErr.Error())
+	}
+
 	// Send response back to Telegram
-	var telegramResponseBody, errTelegram = telegram_services.SendTextToTelegramChat(update.Message.Chat.Id, "Hi Tshogyal & Jigten!")
+	telegramResponseBody, errTelegram := telegram_services.SendTextToTelegramChat(update.Message.Chat.Id, returnMsg)
 	if errTelegram != nil {
 		log.Printf("got error %s from telegram, response body is %s", errTelegram.Error(), telegramResponseBody)
 	} else {

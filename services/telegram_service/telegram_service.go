@@ -11,11 +11,8 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	constants "github.com/jigten/telegram-notion-bot/constants"
 )
-
-const startCommand string = "/start"
-
-var lenStartCommand int = len(startCommand)
 
 const telegramApiBaseUrl string = "https://api.telegram.org/bot"
 const telegramApiSendMessage string = "/sendMessage"
@@ -52,6 +49,16 @@ func ParseTelegramRequest(c *gin.Context) (*Update, error) {
 	}
 
 	return &update, nil
+}
+
+func ParseEventCommand(message string) (string, string, error) {
+	switch message {
+	case constants.COUNTDOWN_COMMAND:
+		return constants.COUNTDOWN_COMMAND, "", nil
+	case constants.START_COMMAND:
+		return constants.START_COMMAND, "", nil
+	}
+	return "", "", errors.New("unknown command")
 }
 
 func SendTextToTelegramChat(chatId int, text string) (string, error) {
