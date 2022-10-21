@@ -1,4 +1,4 @@
-package command_handler_service
+package command_handler
 
 import (
 	"errors"
@@ -6,11 +6,12 @@ import (
 	"time"
 
 	constants "github.com/jigten/telegram-notion-bot/constants"
+	greeting "github.com/jigten/telegram-notion-bot/util/greeting"
 )
 
 func HandleCommand(command string) (string, error) {
-	if command == constants.START_COMMAND {
-		return "Hello Tshogyal & Jigten", nil
+	if command == constants.GREETING_COMMAND {
+		return greeting.ReadGreetingFile(), nil
 	}
 
 	if command == constants.COUNTDOWN_COMMAND {

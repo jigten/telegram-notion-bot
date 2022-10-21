@@ -6,8 +6,9 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
-	command_handler_service "github.com/jigten/telegram-notion-bot/services/command_handler_service"
-	telegram_services "github.com/jigten/telegram-notion-bot/services/telegram_service"
+	telegram_service "github.com/jigten/telegram-notion-bot/services/telegram_service"
+	command_handler "github.com/jigten/telegram-notion-bot/util/command_handler"
+	greeting "github.com/jigten/telegram-notion-bot/util/greeting"
 	"github.com/joho/godotenv"
 )
 
@@ -17,7 +18,7 @@ var allowedChatIds = map[int]bool{
 }
 
 func handler(c *gin.Context) {
-	var update, err = telegram_services.ParseTelegramRequest(c)
+	var update, err = telegram_service.ParseTelegramRequest(c)
 	if err != nil {
 		log.Printf("error parsing update, %s", err.Error())
 		return
@@ -27,21 +28,21 @@ func handler(c *gin.Context) {
 
 	// reject message if not from allowed chats
 	if _, ok := allowedChatIds[update.Message.Chat.Id]; !ok {
-		telegram_services.SendTextToTelegramChat(update.Message.Chat.Id, "Unauthorized Chat ID")
+		telegram_service.SendTextToTelegramChat(update.Message.Chat.Id, "Unauthorized Chat ID")
 	}
 
-	command, _, parseErr := telegram_services.ParseEventCommand(update.Message.Text)
+	command, _, parseErr := telegram_service.ParseEventCommand(update.Message.Text)
 	if parseErr != nil {
-		telegram_services.SendTextToTelegramChat(update.Message.Chat.Id, parseErr.Error())
+		telegram_service.SendTextToTelegramChat(update.Message.Chat.Id, parseErr.Error())
 	}
 
-	returnMsg, msgErr := command_handler_service.HandleCommand(command)
+	returnMsg, msgErr := command_handler.HandleCommand(command)
 	if msgErr != nil {
-		telegram_services.SendTextToTelegramChat(update.Message.Chat.Id, msgErr.Error())
+		telegram_service.SendTextToTelegramChat(update.Message.Chat.Id, msgErr.Error())
 	}
 
 	// Send response back to Telegram
-	telegramResponseBody, errTelegram := telegram_services.SendTextToTelegramChat(update.Message.Chat.Id, returnMsg)
+	telegramResponseBody, errTelegram := telegram_service.SendTextToTelegramChat(update.Message.Chat.Id, returnMsg)
 	if errTelegram != nil {
 		log.Printf("got error %s from telegram, response body is %s", errTelegram.Error(), telegramResponseBody)
 	} else {
@@ -74,7 +75,10 @@ func init() {
 }
 
 func main() {
-	r := setupRouter()
+	// r := setupRouter()
 	// Listen and Server in 0.0.0.0:8080
-	r.Run(":8080")
+	// r.Run(":8080")
+	greeting.SetGreeting("Hello this is a new greeting")
+	greeting := greeting.ReadGreetingFile()
+	fmt.Printf("%s", greeting)
 }

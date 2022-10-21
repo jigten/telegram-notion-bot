@@ -1,4 +1,4 @@
-package telegram_services
+package telegram_service
 
 import (
 	"errors"
@@ -55,8 +55,8 @@ func ParseEventCommand(message string) (string, string, error) {
 	switch message {
 	case constants.COUNTDOWN_COMMAND:
 		return constants.COUNTDOWN_COMMAND, "", nil
-	case constants.START_COMMAND:
-		return constants.START_COMMAND, "", nil
+	case constants.GREETING_COMMAND:
+		return constants.GREETING_COMMAND, "", nil
 	}
 	return "", "", errors.New("unknown command")
 }
