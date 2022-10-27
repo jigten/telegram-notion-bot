@@ -15,8 +15,12 @@ func HandleCommand(command string) (string, error) {
 	}
 
 	if command == constants.COUNTDOWN_COMMAND {
-		nextMeet := time.Date(2022, time.October, 27, 16, 0, 0, 0, time.UTC)
-		year, month, day, hour, min, sec := diff(time.Now(), nextMeet)
+		nextMeet := time.Date(2022, time.October, 27, 16, 0, 0, 0, time.Local)
+		year, month, day, hour, min, sec, done := diff(time.Now(), nextMeet)
+
+		if done {
+			return fmt.Sprint("Countdown over. Have a nice evening together."), nil
+		}
 
 		return fmt.Sprintf("%d years, %d months, %d days, %d hours, %d mins and %d seconds till you two meet.",
 			year, month, day, hour, min, sec), nil
@@ -25,12 +29,10 @@ func HandleCommand(command string) (string, error) {
 	return "", errors.New("unknown command")
 }
 
-func diff(a, b time.Time) (year, month, day, hour, min, sec int) {
-	if a.Location() != b.Location() {
-		b = b.In(a.Location())
-	}
+func diff(a, b time.Time) (year, month, day, hour, min, sec int, done bool) {
 	if a.After(b) {
-		a, b = b, a
+		done = true
+		return
 	}
 	y1, M1, d1 := a.Date()
 	y2, M2, d2 := b.Date()
@@ -60,7 +62,7 @@ func diff(a, b time.Time) (year, month, day, hour, min, sec int) {
 	}
 	if day < 0 {
 		// days in month:
-		t := time.Date(y1, M1, 32, 0, 0, 0, 0, time.UTC)
+		t := time.Date(y1, M1, 32, 0, 0, 0, 0, time.Local)
 		day += 32 - t.Day()
 		month--
 	}

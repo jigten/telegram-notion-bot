@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"time"
+	_ "time/tzdata"
 
 	"github.com/gin-gonic/gin"
 	telegram_service "github.com/jigten/telegram-notion-bot/services/telegram_service"
 	command_handler "github.com/jigten/telegram-notion-bot/util/command_handler"
-	greeting "github.com/jigten/telegram-notion-bot/util/greeting"
 	"github.com/joho/godotenv"
 )
 
@@ -66,19 +67,17 @@ func setupRouter() *gin.Engine {
 }
 
 func init() {
-
 	err := godotenv.Load(".env")
-
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
+
+	loc, _ := time.LoadLocation("Asia/Thimphu")
+	time.Local = loc // -> this is setting the global timezone
 }
 
 func main() {
-	// r := setupRouter()
+	r := setupRouter()
 	// Listen and Server in 0.0.0.0:8080
-	// r.Run(":8080")
-	greeting.SetGreeting("Hello this is a new greeting")
-	greeting := greeting.ReadGreetingFile()
-	fmt.Printf("%s", greeting)
+	r.Run(":8080")
 }
