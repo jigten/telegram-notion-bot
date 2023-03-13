@@ -15,7 +15,7 @@ func HandleCommand(command string) (string, error) {
 	}
 
 	if command == constants.COUNTDOWN_COMMAND {
-		nextMeet := time.Date(2022, time.November, 24, 14, 0, 0, 0, time.Local)
+		nextMeet := time.Date(2023, time.March, 17, 17, 0, 0, 0, time.Local)
 		year, month, day, hour, min, sec, done := diff(time.Now(), nextMeet)
 
 		if done {
